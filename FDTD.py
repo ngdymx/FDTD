@@ -55,10 +55,10 @@ class fdtd_2d_TMz_systolic_block:
         self.Hy = self.khy1 * self.Hy + self.khy2 * (Ez - self.Ez)
 
     def update_Ezx(self, Hy):
-        self.Ezx = self.kex1 * self.Ezx + self.khx2 * (self.Hy - Hy)
+        self.Ezx = self.kex1 * self.Ezx + self.kex2 * (self.Hy - Hy)
 
     def update_Ezy(self, Hx):
-        self.Ezy = self.key1 * self.Ezy + self.key2 * (self.Hx - Hx)
+        self.Ezy = self.key1 * self.Ezy - self.key2 * (self.Hx - Hx)
 
     def update_Ez(self):
         self.Ez = self.Ezx + self.Ezy

@@ -32,7 +32,7 @@ if __name__ == '__main__':
     for t in range(Steps):
         plt.clf()
         space.update()
-        space.apply_src([50, 50], 10*np.sin(2 * np.pi * t / 20))
+        space.apply_src([40, 40], 10*np.sin(2 * np.pi * t / 20))
         Ez = space.export_value()
         plt.imshow(Ez,vmin=-1,vmax=1)
         plt.pause(.0002)
