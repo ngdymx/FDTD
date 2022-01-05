@@ -16,7 +16,9 @@ if __name__ == '__main__':
     mu = 4 * np.pi * 1e-7
     ep = 1 / mu / c / c
     dt = 0.8 * 1 / np.sqrt(1/(dx**2) + 1/(dy**2)) / 3e8
-    space = FDTD.FDTD_2D_TMz_space(100, 100, dt, dx, dy, ep=ep, mu=mu)
+    space = FDTD.FDTD_2D_TMz_space(140, 140, dt, dx, dy, ep=ep, mu=mu)
+    space.set_pml('T','L',40)
+    space.set_pml('B', 'R', 40)
     '''
     space.set_pml('L', 50)
     space.set_pml('R', 50)
