@@ -13,7 +13,8 @@ class fdtd_2d_TMz_systolic_block:
         self.dy = 0
         self.ep = 0
         self.mu = 0
-        self.sigma = 0
+        self.sigma_x = 0
+        self.sigma_y = 0
         self.khx1 = 0
         self.kex1 = 0
         self.khx2 = 0
@@ -23,21 +24,32 @@ class fdtd_2d_TMz_systolic_block:
         self.khy2 = 0
         self.key2 = 0
 
-    def set_block(self, dt, dx, dy, ep, mu, sigma=0):
+    def set_block(self, dt, dx, dy, ep, mu, sigma_x=0, sigma_y=0):
         self.dt = dt
         self.dx = dx
         self.dy = dy
         self.ep = ep
         self.mu = mu
-        self.sigma = sigma
-        self.kex1 = (ep - 0.5 * sigma * dt) / (ep + 0.5 * sigma * dt)
-        self.khx1 = (mu - 0.5 * sigma * mu / ep * dt) / (mu + 0.5 * sigma * mu / ep * dt)
-        self.kex2 = dt / dy / (ep + 0.5 * sigma * dt)
-        self.khx2 = dt / dy / (mu + 0.5 * sigma * mu / ep * dt)
-        self.key1 = (ep - 0.5 * sigma * dt) / (ep + 0.5 * sigma * dt)
-        self.khy1 = (mu - 0.5 * sigma * mu / ep * dt) / (mu + 0.5 * sigma * mu / ep * dt)
-        self.key2 = dt / dx / (ep + 0.5 * sigma * dt)
-        self.khy2 = dt / dx / (mu + 0.5 * sigma * mu / ep * dt)
+        self.sigma_x = sigma_x
+        self.sigma_y = sigma_y
+        self.kex1 = (ep - 0.5 * sigma_x * dt) / (ep + 0.5 * sigma_x * dt)
+        self.khx1 = (mu - 0.5 * sigma_x * mu / ep * dt) / (mu + 0.5 * sigma_x * mu / ep * dt)
+        self.kex2 = dt / dy / (ep + 0.5 * sigma_x * dt)
+        self.khx2 = dt / dy / (mu + 0.5 * sigma_x * mu / ep * dt)
+        self.key1 = (ep - 0.5 * sigma_y * dt) / (ep + 0.5 * sigma_y * dt)
+        self.khy1 = (mu - 0.5 * sigma_y * mu / ep * dt) / (mu + 0.5 * sigma_y * mu / ep * dt)
+        self.key2 = dt / dx / (ep + 0.5 * sigma_y * dt)
+        self.khy2 = dt / dx / (mu + 0.5 * sigma_y * mu / ep * dt)
+
+    def update_parameters(self):
+        self.kex1 = (self.ep - 0.5 * self.sigma_x * self.dt) / (self.ep + 0.5 * self.sigma_x * self.dt)
+        self.khx1 = (self.mu - 0.5 * self.sigma_x * self.mu / self.ep * self.dt) / (self.mu + 0.5 * self.sigma_x * self.mu / self.ep * self.dt)
+        self.kex2 = self.dt / self.dy / (self.ep + 0.5 * self.sigma_x * self.dt)
+        self.khx2 = self.dt / self.dy / (self.mu + 0.5 * self.sigma_x * self.mu / self.ep * self.dt)
+        self.key1 = (self.ep - 0.5 * self.sigma_y * self.dt) / (self.ep + 0.5 * self.sigma_y * self.dt)
+        self.khy1 = (self.mu - 0.5 * self.sigma_y * self.mu / self.ep * self.dt) / (self.mu + 0.5 * self.sigma_y * self.mu / self.ep * self.dt)
+        self.key2 = self.dt / self.dx / (self.ep + 0.5 * self.sigma_y * self.dt)
+        self.khy2 = self.dt / self.dx / (self.mu + 0.5 * self.sigma_y * self.mu / self.ep * self.dt)
 
     def apply_src(self, value, stype='E'):
         if stype == 'E':
@@ -55,10 +67,10 @@ class fdtd_2d_TMz_systolic_block:
         self.Hy = self.khy1 * self.Hy + self.khy2 * (Ez - self.Ez)
 
     def update_Ezx(self, Hy):
-        self.Ezx = self.kex1 * self.Ezx + self.khx2 * (self.Hy - Hy)
+        self.Ezx = self.kex1 * self.Ezx + self.kex2 * (self.Hy - Hy)
 
     def update_Ezy(self, Hx):
-        self.Ezy = self.key1 * self.Ezy + self.key2 * (self.Hx - Hx)
+        self.Ezy = self.key1 * self.Ezy - self.key2 * (self.Hx - Hx)
 
     def update_Ez(self):
         self.Ez = self.Ezx + self.Ezy
@@ -80,7 +92,7 @@ class FDTD_2D_TMz_space:
             # col2 = []
             for j in range(y_nodes):
                 row1.append(fdtd_2d_TMz_systolic_block())
-                row1[j].set_block(dt, dx, dy, ep=ep, mu=mu, sigma=0)
+                row1[j].set_block(dt, dx, dy, ep=ep, mu=mu, sigma_x=0,sigma_y=0)
                 # col2.append(fdtd_2d_TMz_systolic_block())
                 # col2[i].set_block(dt, dx, dy, ep=ep, mu=mu)
 
@@ -130,7 +142,6 @@ class FDTD_2D_TMz_space:
             for j in range(self.y_nodes):
                 self.systolic_blocks1[i][j].update_Ez()
 
-
     def set_pml(self, y_side, x_side, d, R0=1e-16, M=3, ep=8.85e-12):
         sigmax_max = -np.log10(R0) * (M + 1) * ep * 3e8 / 2 / d / self.dx
         sigmay_max = -np.log10(R0) * (M + 1) * ep * 3e8 / 2 / d / self.dy
@@ -138,12 +149,23 @@ class FDTD_2D_TMz_space:
         Ptop = np.power((np.arange(d) / d), M) * sigmay_max
         if x_side == 'L':
             for i in range(d):
-                    self.systolic_blocks1[i][j].set_block(self.dt, self.dx, sigma=Pright[d - 1 - i], mu=self.mu, ep=self.ep)
-                    #self.systolic_blocks2[i][j].set_block(self.dt, self.dx, sigma=Pright[d - 1 - i], mu=self.mu, ep=self.ep)
+                for j in range(self.y_nodes):
+                    self.systolic_blocks1[i][j].sigma_x = Pright[d - 1 - i]
         else:
             for i in range(d):
-                self.systolic_blocks1[self.nodes - d + i].set_block(self.dt, self.dx, sigma=Pright[i], mu=self.mu, ep=self.ep)
-                #self.systolic_blocks2[self.nodes - d + i].set_block(self.dt, self.dx, sigma=Pright[i], mu=self.mu, ep=self.ep)
+                for j in range(self.y_nodes):
+                    self.systolic_blocks1[self.x_nodes - d + i][j].sigma_x = Pright[i]
+        if y_side == 'T':
+            for j in range(d):
+                for i in range(self.x_nodes):
+                    self.systolic_blocks1[i][j].sigma_y = Ptop[d - 1 - j]
+        else:
+            for j in range(d):
+                for i in range(self.x_nodes):
+                    self.systolic_blocks1[i][self.y_nodes - d + j].sigma_y = Ptop[j]
+        for i in range(self.x_nodes):
+            for j in range(self.y_nodes):
+                self.systolic_blocks1[i][j].update_parameters()
 
     def export_value(self):
         for i in range(self.x_nodes):
