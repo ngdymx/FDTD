@@ -87,12 +87,12 @@ class fdtd_2d_TMz_systolic_block:
     def update_parameters(self):
         self.kex1 = (self.ep - 0.5 * self.sigma_x * self.dt) / (self.ep + 0.5 * self.sigma_x * self.dt)
         self.khx1 = (self.mu - 0.5 * self.sigma_x * self.mu / self.ep * self.dt) / (
-                    self.mu + 0.5 * self.sigma_x * self.mu / self.ep * self.dt)
+                self.mu + 0.5 * self.sigma_x * self.mu / self.ep * self.dt)
         self.kex2 = self.dt / self.dy / (self.ep + 0.5 * self.sigma_x * self.dt)
         self.khx2 = self.dt / self.dy / (self.mu + 0.5 * self.sigma_x * self.mu / self.ep * self.dt)
         self.key1 = (self.ep - 0.5 * self.sigma_y * self.dt) / (self.ep + 0.5 * self.sigma_y * self.dt)
         self.khy1 = (self.mu - 0.5 * self.sigma_y * self.mu / self.ep * self.dt) / (
-                    self.mu + 0.5 * self.sigma_y * self.mu / self.ep * self.dt)
+                self.mu + 0.5 * self.sigma_y * self.mu / self.ep * self.dt)
         self.key2 = self.dt / self.dx / (self.ep + 0.5 * self.sigma_y * self.dt)
         self.khy2 = self.dt / self.dx / (self.mu + 0.5 * self.sigma_y * self.mu / self.ep * self.dt)
 
@@ -155,19 +155,6 @@ class FDTD_2D_TMz_space:
         self.systolic_blocks2[pos].apply_src(value, stype)
 
     def update(self):
-        # update 1D H
-        for i in range(self.x_nodes):
-            if i == self.x_nodes - 1:
-                self.systolic_blocks2[i].update_H(0)
-            else:
-                self.systolic_blocks2[i].update_H(self.systolic_blocks2[i + 1].E)
-        # update 1D E
-        for i in range(self.x_nodes):
-            if i == 0:
-                self.systolic_blocks2[i].update_E(0)
-            else:
-                self.systolic_blocks2[i].update_E(self.systolic_blocks2[i - 1].H)
-
         # update 2D Hx
         for i in range(self.x_nodes):
             for j in range(self.y_nodes):
@@ -188,25 +175,45 @@ class FDTD_2D_TMz_space:
         for i in range(self.tfsf_top, self.tfsf_bottom):
             self.systolic_blocks1[i][self.tfsf_left - 1].Hx = self.systolic_blocks1[i][self.tfsf_left - 1].Hx + \
                                                               self.dt / self.dy / self.mu * self.systolic_blocks2[i].E
-            self.systolic_blocks1[i][self.tfsf_right].Hx = self.systolic_blocks1[i][self.tfsf_right].Hx - \
+            self.systolic_blocks1[i][self.tfsf_right-1].Hx = self.systolic_blocks1[i][self.tfsf_right-1].Hx - \
                                                            self.dt / self.dy / self.mu * self.systolic_blocks2[i].E
         # correct 2D Hy
         for j in range(self.tfsf_left, self.tfsf_right):
-                self.systolic_blocks1[self.tfsf_top - 1][j].Hy = self.systolic_blocks1[self.tfsf_top - 1][j].Hy - \
-                                                         self.dt / self.mu / self.dx * self.systolic_blocks2[self.tfsf_top].E
-                self.systolic_blocks1[self.tfsf_bottom][j].Hy = self.systolic_blocks1[self.tfsf_bottom][j].Hy + \
-                                                     self.dt / self.mu / self.dx * self.systolic_blocks2[self.tfsf_bottom].E
-        # correct 2D Ezx
+            self.systolic_blocks1[self.tfsf_top - 1][j].Hy = self.systolic_blocks1[self.tfsf_top - 1][j].Hy - \
+                                                             self.dt / self.mu / self.dx * self.systolic_blocks2[
+                                                                 self.tfsf_top].E
+            self.systolic_blocks1[self.tfsf_bottom-1][j].Hy = self.systolic_blocks1[self.tfsf_bottom-1][j].Hy + \
+                                                            self.dt / self.mu / self.dx * self.systolic_blocks2[
+                                                                self.tfsf_bottom-1].E
+
+        # update 1D H
+        for i in range(self.x_nodes):
+            if i == self.x_nodes - 1:
+                self.systolic_blocks2[i].update_H(0)
+            else:
+                self.systolic_blocks2[i].update_H(self.systolic_blocks2[i + 1].E)
+        # update 1D E
+        for i in range(self.x_nodes):
+            if i == 0:
+                self.systolic_blocks2[i].update_E(0)
+            else:
+                self.systolic_blocks2[i].update_E(self.systolic_blocks2[i - 1].H)
+
+        # correct 2D Ezx, Ezy
         for j in range(self.tfsf_left, self.tfsf_right):
-                self.systolic_blocks1[self.tfsf_top][j].Ezx = self.systolic_blocks1[self.tfsf_top][j].Ezx - \
-                                                      self.dt / self.dx / self.ep * self.systolic_blocks2[self.tfsf_top-1].H
-                self.systolic_blocks1[self.tfsf_bottom][j].Ezx = self.systolic_blocks1[self.tfsf_bottom][j].Ezx + \
-                                                      self.dt / self.dx / self.ep * self.systolic_blocks2[self.tfsf_bottom].H
-                # correct 2D Ezy
-                self.systolic_blocks1[self.tfsf_top][j].Ezy = self.systolic_blocks1[self.tfsf_top][j].Ezy - \
-                                                      self.dt / self.dx / self.ep * self.systolic_blocks2[self.tfsf_top-1].H
-                self.systolic_blocks1[self.tfsf_bottom][j].Ezy = self.systolic_blocks1[self.tfsf_bottom][j].Ezy + \
-                                                      self.dt / self.dx / self.ep * self.systolic_blocks2[self.tfsf_bottom].H
+            self.systolic_blocks1[self.tfsf_top][j].Ezx = self.systolic_blocks1[self.tfsf_top][j].Ezx - \
+                                                          self.dt / self.dx / self.ep * self.systolic_blocks2[
+                                                              self.tfsf_top - 1].H / 2
+            self.systolic_blocks1[self.tfsf_bottom-1][j].Ezx = self.systolic_blocks1[self.tfsf_bottom-1][j].Ezx + \
+                                                             self.dt / self.dx / self.ep * self.systolic_blocks2[
+                                                                 self.tfsf_bottom-1].H / 2
+            # correct 2D Ezy
+            self.systolic_blocks1[self.tfsf_top][j].Ezy = self.systolic_blocks1[self.tfsf_top][j].Ezy - \
+                                                          self.dt / self.dx / self.ep * self.systolic_blocks2[
+                                                              self.tfsf_top - 1].H / 2
+            self.systolic_blocks1[self.tfsf_bottom-1][j].Ezy = self.systolic_blocks1[self.tfsf_bottom-1][j].Ezy + \
+                                                             self.dt / self.dx / self.ep * self.systolic_blocks2[
+                                                                 self.tfsf_bottom-1].H / 2
 
         # update 2D Ezx
         for j in range(self.y_nodes):
@@ -256,11 +263,16 @@ class FDTD_2D_TMz_space:
             for j in range(self.y_nodes):
                 self.systolic_blocks1[i][j].update_parameters()
 
-    def export_value(self):
+    def export_value_Ez(self):
         for i in range(self.x_nodes):
             for j in range(self.y_nodes):
                 self.Ez[i][j] = self.systolic_blocks1[i][j].Ez
         return self.Ez
+
+    def export_value_E(self):
+        for i in range(self.x_nodes):
+            self.E[i] = self.systolic_blocks2[i].E
+        return self.E
 
     def set_tfsf_boundary(self, first_node, last_node):
         self.tfsf_top = first_node[0]
@@ -268,7 +280,15 @@ class FDTD_2D_TMz_space:
         self.tfsf_bottom = last_node[0]
         self.tfsf_right = last_node[1]
 
-
+    def add_material(self, ep, mu, sigma, R):
+        #ss1 = place1[0]
+        #ss2 = place1[1]
+        #ee1 = place2[0]
+        #ee2 = place2[1]
+        for i in range(self.x_nodes):
+            for j in range(self.y_nodes):
+                if (i - self.x_nodes/2)**2 + (j - self.y_nodes/2)**2 < R**2:
+                    self.systolic_blocks1[i][j].set_block(self.dt, self.dx, self.dy, ep=ep, mu=mu, sigma_x=sigma, sigma_y=sigma)
 '''
     def add_material(self,ep,mu,sigma,place):
         ss = place[0]

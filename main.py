@@ -20,6 +20,7 @@ if __name__ == '__main__':
     space.set_pml('T', 'L', 20)
     space.set_pml('B', 'R', 20)
     space.set_tfsf_boundary([30, 30], [70, 70])
+    space.add_material(ep * 8, mu, 0, 10)
     '''
     space.set_pml('L', 50)
     space.set_pml('R', 50)
@@ -35,8 +36,8 @@ if __name__ == '__main__':
     for t in range(Steps):
         plt.clf()
         space.update()
-        space.apply_src(9, 10*np.sin(2 * np.pi * t / 20))
-        Ez = space.export_value()
+        space.apply_src(9, 10*np.sin(2 * np.pi * t / 20), stype='E')
+        Ez = space.export_value_Ez()
         plt.imshow(Ez, vmin=-1, vmax=1)
         plt.pause(.0002)
         #print(t)
